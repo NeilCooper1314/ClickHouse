@@ -271,6 +271,9 @@ void DatabaseOrdinary::createTable(
     String table_metadata_tmp_path = table_metadata_path + ".tmp";
     String statement;
 
+    const bool is_attach = typeid_cast<const ASTCreateQuery &>(*query).attach;
+
+    if (!is_attach)
     {
         statement = getTableDefinitionFromCreateQuery(query);
 
@@ -292,13 +295,14 @@ void DatabaseOrdinary::createTable(
                 throw Exception("Table " + name + "." + table_name + " already exists.", ErrorCodes::TABLE_ALREADY_EXISTS);
         }
 
-        /// If it was ATTACH query and file with table metadata already exist
-        /// (so, ATTACH is done after DETACH), then rename atomically replaces old file with new one.
-        Poco::File(table_metadata_tmp_path).renameTo(table_metadata_path);
+        if (!is_attach)
+            Poco::File(table_metadata_tmp_path).renameTo(table_metadata_path);
     }
     catch (...)
     {
-        Poco::File(table_metadata_tmp_path).remove();
+        if (!is_attach)
+            Poco::File(table_metadata_tmp_path).remove();
+
         throw;
     }
 }
